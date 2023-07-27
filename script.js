@@ -207,7 +207,7 @@ d3.csv("Employee (hr.employee).csv", function (row) {
                     break;
 
                 case "Managing Director":
-                    tooltipBackgroundColour = "green";
+                    tooltipBackgroundColour = "#2ecc71";
                     break;
 
                 case "Director":
@@ -261,8 +261,6 @@ d3.csv("Employee (hr.employee).csv", function (row) {
                 .style("visibility", "visible")
                 .style("background-color", tooltipBackgroundColour); // Make the tooltip visible
         }
-
-        console.log(tooltipBackgroundColour)
 
         function hideTooltip() {
             tooltip.style("visibility", "hidden");
@@ -334,15 +332,15 @@ d3.csv("Employee (hr.employee).csv", function (row) {
     .catch(error => { console.log(error); });
 
 
-// LEGEND TO BE APPENDED TO THE BOTTOM OF THE CHART AT #chart-legend
+// LEGEND TO BE APPENDED TO THE BOTTOM OF THE CHART AT #chart-chart-department-legend
 const legendColors = ["#C70039", "#FFC300", "#2ecc71", "#2874a6", "#f1948a", "#0b5345 ", "#5b2c6f", "#aed6f1"];
 const legendLabels = ["Board of Directors", "Holding Company", "Subsidiary", "Department", "Project Program", "Unit", "Section", "University"];
 
-// CREATE THE SVG CONTAINER FOR THE LEGEND AND APPEND IT TO THE #chart-legend DIV
-const legendSvg = d3.select("#chart-legend")
+// CREATE THE SVG CONTAINER FOR THE LEGEND AND APPEND IT TO THE #chart-department-legend DIV
+const legendSvg = d3.select("#chart-department-legend")
     .append("svg")
     .attr("width", 1366)
-    .attr("height", 200)
+    .attr("height", 100)
     .attr("viewBox", [0, 0, 1366, 50])
     .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif; user-select: none;");
 
@@ -372,3 +370,45 @@ legendEntry.append("text")
     .attr("weight", "bold")
     .attr("fill", "white")
     .text((d, i) => legendLabels[i]);
+// #########################################
+
+// LEGEND TO BE APPENDED TO THE BOTTOM OF THE CHART AT #chart-role-legend:
+// Chairperson of the Board, Chief Executive Officer, Managing Director, Director, Head, Manager, Specialist, Officer, Technician, Support Staff, Intern
+const legendColorsRole = ["red", "orange", "green", "SteelBlue", "YellowGreen", "purple", "yellow", "gray", "LightCoral", "Magenta", "aqua"];
+const legendLabelsRole = ["Chairperson of the Board", "Chief Executive Officer", "Managing Director", "Director", "Head", "Manager", "Specialist", "Officer", "Technician", "Support Staff", "Intern"];
+
+// CREATE THE SVG CONTAINER FOR THE LEGEND AND APPEND IT TO THE #chart-role-legend DIV 
+const legendSvgRole = d3.select("#chart-role-legend")
+    .append("svg")
+    .attr("width", 1366)
+    .attr("height", 60)
+    .attr("viewBox", [0, 0, 1366, 50])
+    .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif; user-select: none;");
+
+// ADD THE LEGEND TO THE BOTTOM OF THE PAGE - ITEMS ARE CIRCLE DOTS WITH THE ROLE TYPE TEXT NEXT TO THEM
+const legendRole = legendSvgRole.append("g")
+    .attr("transform", `translate(50, 0)`);
+
+const legendCellWidthRole = 120;
+const legendCellHeightRole = 20;
+
+const legendEntryRole = legendRole.selectAll(".legend-entry")
+    .data(legendColorsRole)
+    .enter().append("g")
+    .attr("class", "legend-entry")
+    .attr("transform", (d, i) => `translate(${i * (legendCellWidthRole + 5)}, 0)`); // Added 5px spacing between legend entries
+
+legendEntryRole.append("circle")
+    .attr("r", 5)
+    .attr("fill", (d, i) => legendColorsRole[i]);
+
+legendEntryRole.append("text")
+    .attr("x", (legendCellWidthRole / 20)) // Modified x-position to include 5px spacing
+    .attr("y", legendCellHeightRole / 120)
+    .attr("dy", "0.3em")
+    .attr("text-anchor", "left")
+    .attr("weight", "bold")
+    .attr("fill", "black")
+    .text((d, i) => legendLabelsRole[i]);
+    // #########################################
+
