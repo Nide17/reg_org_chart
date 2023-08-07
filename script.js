@@ -1,73 +1,36 @@
+// IMPORTING FUNCTIONS AND VARIABLES FROM OTHER FILES TO USE THEM IN THIS FILE
+import { showTooltip, hideTooltip } from "./modules/employeeTooltip.js";
+import { showTopRightInfoBox, hideTopRightInfoBox } from "./modules/topRightInfoBox.js";
+import { showDepartmentAndRoleLegend } from "./modules/chartLegends.js";
+import { createHierarchy } from "./modules/createHierarchy.js";
+import { getCsvRowObject } from "./modules/csvRowObject.js";
+
 // PARSING THE CSV DATA AND CONVERTING IT INTO A JSON ARRAY OF OBJECTS
 const data = [];
 d3.csv("Employee (hr.employee).csv", function (row) {
-    const obj = {
-        "id": row.ID,
-        "name": row["Employee Name"],
-        "title": row["Job Position"],
-        "role_type": row["Role Type"],
-        "email": row["Work Email"],
-        "phone": row["Work Phone"] ? row["Work Phone"].replace(/'/g, "") : 'N/A', // IF THE PHONE NUMBER IS NOT AVAILABLE, SET IT TO 'N/A
-        "manager_id": row["Manager/ID"] ? row["Manager/ID"] : 'N/A', // IF THE MANAGER ID IS NOT AVAILABLE, SET IT TO 'N/A
-        "manager_name": row["Manager/Employee Name"],
-        "department_name": row["Department/Department Name"],
-        "department_type": row["Department/Department Type"],
-        "department_manager_type": row["Manager/Role Type"],
-        "value": 1
-    };
-    data.push(obj);
-}).then(() => {
 
-    // TRANSFORMING THE JSON ARRAY OF OBJECTS INTO A HIERARCHICAL JSON STRUCTURE
-    function get_hierarchy(data) {
-        const hierarchy = {
-            "name": "Rwanda Energy Group",
-            "title": "REG",
-            "children": []
-        };
+    // MAKING AN OBJECT OUT OF EACH ROW OF THE CSV FILE
+    const rowObject = getCsvRowObject(row);
 
-        // CREATING A LOOKUP TABLE FOR THE JSON ARRAY OF OBJECTS
-        const lookup = {};
-        data.forEach(obj => {
-            lookup[obj.id] = obj;
-            obj.children = [];
-        });
-
-        // ADDING THE CHILDREN TO THE HIERARCHY JSON STRUCTURE
-        data.forEach(obj => {
-
-            // WHEN THE MANAGER IS NOT THE ROOT NODE (REG) 
-            if (obj.manager_id && lookup[obj.manager_id]) {
-                lookup[obj.manager_id].children.push(obj);
-            }
-
-            // IF THE CURRENT HAS NO PARENT (MANAGER), SKIP IT
-            else if (obj.manager_id && !lookup[obj.manager_id] && obj.title !== "Chairperson of the Board") {
-                return;
-            }
-
-            else {
-                // WHEN THE MANAGER IS THE ROOT NODE (REG) 
-                hierarchy.children.push(obj);
-            }
-        });
-
-        // RETURNING THE HIERARCHY JSON STRUCTURE
-        console.log(hierarchy)
-        return hierarchy;
+    // IF THE rowObject.related_leads_opportunities NOT EMPTY, BUT OTHERS ARE EMPTY, ADD ITS VALUE TO THE "related_leads_opportunities" ARRAY OF THE PREVIOUS OBJECT
+    if (rowObject.related_leads_opportunities && rowObject.related_leads_opportunities[0] !=="" && !rowObject.id) {
+        data[data.length - 1].related_leads_opportunities.push(rowObject.related_leads_opportunities[0]);
+        return;
     }
 
+    // ADDING THE OBJECT TO THE JSON ARRAY OF OBJECTS
+    data.push(rowObject);
+}).then(() => {
+
     // SPECIFYING THE DIMENSIONS OF THE CHART AND THE MARGINS
-    const width = 1366;
-    const marginTop = 100;
-    const marginRight = 20;
-    const marginBottom = 10;
-    const marginLeft = 50;
+    const width = 1366, marginTop = 100, marginRight = 20, marginBottom = 10, marginLeft = 50;
 
     // ROWS ARE SEPARATED BY dx PIXELS, COLUMNS BY dy PIXELS. THESE NAMES CAN BE COUNTER-INTUITIVE
     // (dx IS A HEIGHT, AND dy A WIDTH). THIS BECAUSE THE TREE MUST BE VIEWED WITH THE ROOT AT THE
     // “BOTTOM”, IN THE DATA DOMAIN. THE WIDTH OF A COLUMN IS BASED ON THE TREE’S HEIGHT.
-    const root = d3.hierarchy(get_hierarchy(data)); // CREATING THE HIERARCHY FROM THE JSON STRUCTURE 
+    const root = d3.hierarchy(createHierarchy(data)); // CREATING THE HIERARCHY FROM THE JSON STRUCTURE 
+
+    // DEFINING THE DIMENSIONS OF THE CHART
     const dx = 30;
     const dy = (width - marginRight - marginLeft) / (1 + root.height);
 
@@ -76,53 +39,51 @@ d3.csv("Employee (hr.employee).csv", function (row) {
     const diagonal = d3.linkHorizontal().x(dt => dt.y).y(dt => dt.x);
 
     // CREATING THE SVG CONTAINER AND THE LAYERS FOR LINKS AND NODES OF THE CHART
-    const svg = d3.create("svg")
+    const svgContainer = d3.create("svg")
         .attr("width", width)
         .attr("height", dx)
         .attr("viewBox", [-marginLeft, -marginTop, width, dx])
         .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif; user-select: none;");
 
     // ADDING THE LINKS AND THE NODES TO THE SVG CONTAINER AND SPECIFYING THE TRANSITION
-    const gLink = svg.append("g")
+    const gLink = svgContainer.append("g")
         .attr("fill", "none")
         .attr("stroke", "#555")
         .attr("stroke-opacity", 0.15)
         .attr("stroke-width", 2);
 
     // ADDING THE NODES TO THE SVG CONTAINER AND SPECIFYING THE TRANSITION
-    const gNode = svg.append("g")
+    const gNode = svgContainer.append("g")
         .attr("cursor", "pointer")
         .attr("pointer-events", "all");
 
     // UPDATING THE CHART WHEN THE USER CLICKS ON A NODE 
     function update(event, source) {
-        const duration = event?.altKey ? 2500 : 250; // WHEN THE ALT KEY IS PRESSED, THE TRANSITION IS SLOWER
-        const nodes = root.descendants().reverse();
-        const links = root.links();
+        const duration = event?.altKey ? 2500 : 250; // WHEN THE ALT KEY IS PRESSED, THE TRANSITION GETS SLOWER
+        
+        // COMPUTING THE NEW DIMENSIONS OF THE SVG CONTAINER ON USER CLICK
+        const nodes = root.descendants().reverse(); // DESCENDANTS ARE THE NODES OF THE TREE
+        const links = root.links(); // LINKS ARE THE CONNECTIONS BETWEEN THE NODES
+        tree(root); // CALLING THE TREE LAYOUT ON THE ROOT NODE TO COMPUTE THE NEW DIMENSIONS OF THE SVG CONTAINER
+        let left = root, right = root; // INITIALIZING THE LEFT AND RIGHT NODES TO THE ROOT NODE 
 
-        // COMPUTING THE NEW TREE LAYOUT
-        tree(root);
-
-        let left = root;
-        let right = root;
-
-        // UPDATING THE LINKS 
-        root.eachBefore(node => {
-            if (node.x < left.x) left = node;
-            if (node.x > right.x) right = node;
+        // UPDATING THE LINKS WHEN THE USER CLICKS ON A NODE 
+        root.eachBefore(node => { // EACHBEFORE TRAVERSES THE HIERARCHY IN PRE-ORDER TRAVERSAL
+            if (node.x < left.x) left = node; // UPDATING THE LEFT NODE BY COMPARING THE X COORDINATES OF THE NODES
+            if (node.x > right.x) right = node; // UPDATING THE RIGHT NODE
         });
 
         // COMPUTING THE NEW DIMENSIONS OF THE SVG CONTAINER ON USER CLICK
         const height = right.x - left.x + marginTop + marginBottom;
 
         // SPECIFYING THE TRANSITION FOR THE SVG CONTAINER 
-        const transition = svg.transition()
+        const transition = svgContainer.transition()
             .duration(duration)
             .attr("height", height)
             .attr("viewBox", [-marginLeft, left.x - marginTop, width, height])
-            .tween("resize", window.ResizeObserver ? null : () => () => svg.dispatch("toggle"));
+            .tween("resize", window.ResizeObserver ? null : () => () => svgContainer.dispatch("toggle")); // TOGGLE THE TOP-RIGHT INFO BOX ON CLICK OF THE NODE
 
-        // UPDATING THE NODES 
+        // UPDATING THE NODES
         const node = gNode.selectAll("g")
             .data(nodes, dt => dt.id);
 
@@ -134,12 +95,19 @@ d3.csv("Employee (hr.employee).csv", function (row) {
             // TOGGLE CHILDREN ON CLICK OF THE NODE TO DISPLAY OR HIDE THEM
             .on("click", (event, dt) => {
                 dt.children = dt.children ? null : dt._children;
-                update(event, dt);
+                update(event, dt); // UPDATING THE CHART WITH THE NEW DATA ON CLICK
+                // TOGGLE THE TOP-RIGHT INFO BOX ON CLICK OF THE NODE
+                if (dt.data.title !== "") {
+                    showTopRightInfoBox(event, dt);
+                }
+                else {
+                    hideTopRightInfoBox(event, dt);
+                }
             });
 
         // ADDING THE CIRCLES AND THE TEXTS TO THE ENTER SELECTION
         nodeEnter.append("circle")
-            .attr("r", 5)
+            .attr("r", 8)
             .attr("fill", dt =>
                 dt._children && dt.data.department_type === "Board of Directors" ? "#C70039" :
                     dt._children && dt.data.department_type === "Holding Company" ? "#FFC300" :
@@ -155,9 +123,9 @@ d3.csv("Employee (hr.employee).csv", function (row) {
 
         // ADDING THE TEXTS TO THE ENTER SELECTION
         nodeEnter.append("text")
-            .attr("dy", "0.3em")
-            .attr("x", dt => dt._children ? -24 : 24)
-            .attr("text-anchor", dt => dt._children ? "end" : "start")
+            .attr("dy", dt => dt._children ? "-1.0em" : "0em")
+            .attr("x", dt => dt._children ? -24 : 12)
+            .attr("text-anchor", dt => dt._children ? "middle" : "start")
             .text(d => d.data.title)
             .attr("stroke-linejoin", "round")
             .attr("stroke-width", 0)
@@ -165,118 +133,15 @@ d3.csv("Employee (hr.employee).csv", function (row) {
             .on("mouseover", showTooltip)
             .on("mouseout", hideTooltip);
 
-
-        // ###############################
-        // TOOLTIP FUNCTIONS
-        var tooltipBackgroundColour = "#EAEDED"; // Set the background colour of the tooltip
-        const tooltip = d3.select("#chart-container")
-            .append("div")
-            .style("position", "absolute")
-            .style("visibility", "hidden")
-            .style("border", "1px solid #641E16")
-            .style("padding", "8px")
-            .style("font-family", "sans-serif")
-            .style("font-size", "11px")
-            .style("border-radius", "5px")
-            .style("pointer-events", "none")
-            .style("color", "#fff")
-            .style("background-color", tooltipBackgroundColour);
-
-        function showTooltip(event, d) {
-            const tooltipWidth = 150; // Set the desired width of the tooltip
-            const mouseX = event.pageX; // Get the x-coordinate of the mouse pointer
-            const mouseY = event.pageY; // Get the y-coordinate of the mouse pointer
-
-            // Calculate the position of the tooltip
-            let tooltipX = mouseX + 10; // Add an offset to avoid overlapping the mouse pointer
-            let tooltipY = mouseY - 10; // Subtract an offset to adjust the tooltip position
-
-            // If the tooltip would exceed the right boundary, reposition it to the left of the mouse pointer
-            if (tooltipX + tooltipWidth > window.innerWidth) {
-                tooltipX = mouseX - tooltipWidth - 10;
-            }
-
-            // SET THE BACKGROUND COLOUR OF THE TOOLTIP BASED ON THE ROLE TYPE
-            switch (d.data.role_type) {
-                case "Chairperson of the Board":
-                    tooltipBackgroundColour = "red";
-                    break;
-
-                case "Chief Executive Officer":
-                    tooltipBackgroundColour = "orange";
-                    break;
-
-                case "Managing Director":
-                    tooltipBackgroundColour = "#2ecc71";
-                    break;
-
-                case "Director":
-                    tooltipBackgroundColour = "SteelBlue";
-                    break;
-
-                case "Head":
-                    tooltipBackgroundColour = "YellowGreen";
-                    break;
-
-                case "Manager":
-                    tooltipBackgroundColour = "purple";
-                    break;
-
-                case "Specialist":
-                    tooltipBackgroundColour = "yellow";
-                    break;
-
-                case "Officer":
-                    tooltipBackgroundColour = "gray";
-                    break;
-
-                case "Technician":
-                    tooltipBackgroundColour = "LightCoral";
-                    break;
-
-                case "Support Staff":
-                    tooltipBackgroundColour = "Magenta";
-                    break;
-
-                case "Intern":
-                    tooltipBackgroundColour = "aqua";
-                    break;
-
-                default:
-                    break;
-            }
-
-            tooltip.html(`
-            Name: ${d.data.name ? d.data.name : "N/A"}<br>
-            Position: ${d.data.title ? d.data.title : "N/A"}<br>
-            Role Type: ${d.data.role_type ? d.data.role_type : "N/A"}<br>
-            Manager: ${d.data.manager_name ? d.data.manager_name : "N/A"}<br>
-            Phone: ${d.data.phone ? d.data.phone : "N/A"}<br>
-            Email: ${d.data.email ? d.data.email : "N/A"}<br>
-            Department Type: ${d.data.department_type ? d.data.department_type : "N/A"}<br>
-            Department Name: ${d.data.department_name ? d.data.department_name : "N/A"}
-            `) // Set the text of the tooltip
-                .style("left", `${tooltipX}px`) // Set the x-position of the tooltip
-                .style("top", `${tooltipY}px`) // Set the y-position of the tooltip
-                .style("visibility", "visible")
-                .style("background-color", tooltipBackgroundColour); // Make the tooltip visible
-        }
-
-        function hideTooltip() {
-            tooltip.style("visibility", "hidden");
-        }
-
-        // ###############################
-
         // THIS IS THE UPDATE SELECTION AND IT RETURNS THE UPDATING DOM ELEMENTS (CIRCLES)
-        const nodeUpdate = node.merge(nodeEnter).transition(transition)
-            .attr("transform", d => `translate(${d.y},${d.x})`)
+        node.merge(nodeEnter).transition(transition)
+            .attr("transform", dta => `translate(${dta.y},${dta.x})`)
             .attr("fill-opacity", 1)
             .attr("stroke-opacity", 1);
 
         // THIS IS THE EXIT SELECTION AND IT RETURNS THE EXITING DOM ELEMENTS (CIRCLES)
-        const nodeExit = node.exit().transition(transition).remove()
-            .attr("transform", d => `translate(${source.y},${source.x})`)
+        node.exit().transition(transition).remove()
+            .attr("transform", dt => `translate(${source.y},${source.x})`)
             .attr("fill-opacity", 0)
             .attr("stroke-opacity", 0);
 
@@ -314,101 +179,23 @@ d3.csv("Employee (hr.employee).csv", function (row) {
     // (ARBITRARILY SELECTED AS THE ROOT, PLUS NODES WITH 1 LETTERS)
     root.x0 = dy / 2;
     root.y0 = 0;
-    root.descendants().forEach((d, i) => {
-        d.id = i;
-        d._children = d.children;
 
-        // OPENING THE ROOT AND THE NODES WITH 1 LETTERS IN THEIR NAME BY DEFAULT
-        if (d.depth && d.data.name.length !== 15) d.children = null;
+    // OPENING THE ROOT AND THE NODES WITH 1 LETTERS IN THEIR NAME BY DEFAULT
+    root.descendants().forEach((d, index) => {
+        d.id = index;
+        d._children = d.children;
+        if (d.depth && d.data.name.length > 1) d.children = null;
     });
 
     // UPDATING THE TREE TO THE INITIAL STATE - NOTE THAT THE ROOT IS OPEN BY DEFAULT
     update(null, root);
 
     // SELECT THE SVG CONTAINER AND APPEND THE SVG ELEMENT TO IT
-    d3.select("#chart-container").node().append(svg.node());
+    d3.select("#chart-container").node().append(svgContainer.node());
 })
     // CATCH ANY ERROR AND LOG IT TO THE CONSOLE
     .catch(error => { console.log(error); });
 
 
-// LEGEND TO BE APPENDED TO THE BOTTOM OF THE CHART AT #chart-chart-department-legend
-const legendColors = ["#C70039", "#FFC300", "#2ecc71", "#2874a6", "#f1948a", "#0b5345 ", "#5b2c6f", "#aed6f1"];
-const legendLabels = ["Board of Directors", "Holding Company", "Subsidiary", "Department", "Project Program", "Unit", "Section", "University"];
-
-// CREATE THE SVG CONTAINER FOR THE LEGEND AND APPEND IT TO THE #chart-department-legend DIV
-const legendSvg = d3.select("#chart-department-legend")
-    .append("svg")
-    .attr("width", 1366)
-    .attr("height", 100)
-    .attr("viewBox", [0, 0, 1366, 50])
-    .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif; user-select: none;");
-
-// ADD THE LEGEND TO THE BOTTOM OF THE PAGE
-const legend = legendSvg.append("g")
-    .attr("transform", `translate(50, 0)`);
-
-const legendCellWidth = 120;
-const legendCellHeight = 20;
-
-const legendEntry = legend.selectAll(".legend-entry")
-    .data(legendColors)
-    .enter().append("g")
-    .attr("class", "legend-entry")
-    .attr("transform", (d, i) => `translate(${i * legendCellWidth}, 0)`);
-
-legendEntry.append("rect")
-    .attr("width", legendCellWidth)
-    .attr("height", legendCellHeight)
-    .attr("fill", (d, i) => legendColors[i]);
-
-legendEntry.append("text")
-    .attr("x", legendCellWidth / 2)
-    .attr("y", legendCellHeight / 2)
-    .attr("dy", "0.35em")
-    .attr("text-anchor", "middle")
-    .attr("weight", "bold")
-    .attr("fill", "white")
-    .text((d, i) => legendLabels[i]);
-// #########################################
-
-// LEGEND TO BE APPENDED TO THE BOTTOM OF THE CHART AT #chart-role-legend:
-// Chairperson of the Board, Chief Executive Officer, Managing Director, Director, Head, Manager, Specialist, Officer, Technician, Support Staff, Intern
-const legendColorsRole = ["red", "orange", "green", "SteelBlue", "YellowGreen", "purple", "yellow", "gray", "LightCoral", "Magenta", "aqua"];
-const legendLabelsRole = ["Chairperson of the Board", "Chief Executive Officer", "Managing Director", "Director", "Head", "Manager", "Specialist", "Officer", "Technician", "Support Staff", "Intern"];
-
-// CREATE THE SVG CONTAINER FOR THE LEGEND AND APPEND IT TO THE #chart-role-legend DIV 
-const legendSvgRole = d3.select("#chart-role-legend")
-    .append("svg")
-    .attr("width", 1366)
-    .attr("height", 60)
-    .attr("viewBox", [0, 0, 1366, 50])
-    .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif; user-select: none;");
-
-// ADD THE LEGEND TO THE BOTTOM OF THE PAGE - ITEMS ARE CIRCLE DOTS WITH THE ROLE TYPE TEXT NEXT TO THEM
-const legendRole = legendSvgRole.append("g")
-    .attr("transform", `translate(50, 0)`);
-
-const legendCellWidthRole = 120;
-const legendCellHeightRole = 20;
-
-const legendEntryRole = legendRole.selectAll(".legend-entry")
-    .data(legendColorsRole)
-    .enter().append("g")
-    .attr("class", "legend-entry")
-    .attr("transform", (d, i) => `translate(${i * (legendCellWidthRole + 5)}, 0)`); // Added 5px spacing between legend entries
-
-legendEntryRole.append("circle")
-    .attr("r", 5)
-    .attr("fill", (d, i) => legendColorsRole[i]);
-
-legendEntryRole.append("text")
-    .attr("x", (legendCellWidthRole / 20)) // Modified x-position to include 5px spacing
-    .attr("y", legendCellHeightRole / 120)
-    .attr("dy", "0.3em")
-    .attr("text-anchor", "left")
-    .attr("weight", "bold")
-    .attr("fill", "black")
-    .text((d, i) => legendLabelsRole[i]);
-    // #########################################
-
+// ADDING THE DEPARTMENT TYPE AND ROLE TO THE CHART
+showDepartmentAndRoleLegend();
