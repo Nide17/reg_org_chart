@@ -29,6 +29,30 @@ Create an HTML file and include the necessary markup. Copy and paste the followi
 </html>
 ```
 
+### NOTABLE FILES, VARIABLES AND FUNCTIONS
+
+#### FILES
+
+- script.js: The main file that process the csv file for employees and leads.
+- chart.js: File with functions and varibales used for creating and updating the chart.
+- chartLegends.js: File with function "showDepartmentAndRoleLegend" used to create and show the legends for the charts.
+- createHiarchy.js: File for creating a JSON structure of the csv data to be used while creating the hierarchy.
+- csvRowObject.js: File with two functions: "getCsvRowEmployee" and "getCsvRowLead" used to parse one row in the csv file to facilitate in making the JSON structure.
+- employeeTooltip.js: File for displaying and hiding employee's details on hover via showTooltip, and hideTooltip functions.
+- getNodeColor.js: File with function "getNodeColor" used to calculate the color of the Node of employee.
+- selectLeads.js: File with function "selectLeadsDropdown" used to show a chart with the customer as the root of the chart.
+- showLeadsButton.js: File with function "showLeadsButton" used to show the button to show and hide the whole chart details.
+- topRightInfoBox.js: File with functions "showTopRightInfoBox" and "hideTopRightInfoBox" used to show and hide the box that has information about the leads of the selected employee.
+
+#### VARIABLES
+
+##### script.js
+
+- allEmployees: Contains the chart details for all employees.
+- leadsData: Contains the chart details for employees with leads.
+
+#### FUNCTIONS
+
 Create a CSV file named data.csv and populate it with the employee data. Each row should contain the following fields: **Employee_ID, Name, Title, Manager_ID, Role_Type.** Make sure the CSV file is in the same directory as your HTML and JavaScript files.
 
 Open the HTML file in a web browser. The organizational tree chart will be displayed in the browser.
