@@ -49,7 +49,7 @@ const selectLeadsDropdown = (leadsData, allEmployees) => {
         var empRoot = d3.hierarchy(empHierarchy);
 
         // FIND THE NODE WITH THE ID
-        var newHierarchy = findNodeById(empRoot.data, selectedLeadOpportunity.id.split('_')[0]);
+        var newHierarchy = selectedLeadOpportunity ? findNodeById(empRoot.data, selectedLeadOpportunity.id.split('_')[0]) : empHierarchy;
 
         let newRoot = d3.hierarchy(newHierarchy); // CREATING THE HIERARCHY FROM THE JSON STRUCTURE
 
@@ -58,6 +58,10 @@ const selectLeadsDropdown = (leadsData, allEmployees) => {
 
         // REMOVE IT
         chartView.remove();
+
+        // HIDE THE SHOW LEADS BUTTON WHEN A LEAD IS SELECTED: id not empty
+        d3.select("#top-left-leads-button")
+            .style("visibility", selectedLeadOpportunityId !== "" ? "hidden" : "visible");
 
         // CALLING THE FUNCTION TO CREATE THE CHART
         createChart(newRoot, leadsData, allEmployees);

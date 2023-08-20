@@ -1,6 +1,8 @@
 function getNodeColor(node) {
     if (!node.children && !node._children) {
-        return "gray"; // Gray out nodes with no children
+        return "gray";
+    } else if (node.data.title === "REG") {
+        return "black"; // Gray out nodes with no children
     } else if (node.data.department_type === "Board of Directors") {
         return "#C70039";
     } else if (node.data.department_type === "Holding Company") {
@@ -21,6 +23,5 @@ function getNodeColor(node) {
         return "#999"; // Default color for other nodes
     }
 }
-
 
 export { getNodeColor }

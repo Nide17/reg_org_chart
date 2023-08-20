@@ -7,7 +7,8 @@ const createHierarchy = (data) => {
         "title": "REG",
         "email": "info@reg.rw",
         "children": [],
-        "id": "-1"
+        "id": "-1",
+        "value": 1
     };
 
     // CREATING A LOOKUP TABLE FOR THE JSON ARRAY OF OBJECTS

@@ -28,7 +28,7 @@ const showLeadsButton = (root, showTopRightInfoBox, hideTopRightInfoBox) => {
         // EXPAND & COLLAPSE ALL NODES
         allExpanded = !allExpanded;
 
-        // FUNCTION TO TOGGLE THE NODES FROM THE SECOND NODE
+        // FUNCTION TO TOGGLE THE NODES
         function toggleNode(node) {
             if (node.children) {
                 node._children = node.children;
@@ -48,20 +48,19 @@ const showLeadsButton = (root, showTopRightInfoBox, hideTopRightInfoBox) => {
         }
 
         // CALLING THE TOGGLE FUNCTION ON THE NODE NEXT TO THE ROOT TO TOGGLE ALL NODES NEXT TO IT
-        toggleNode(root.children[0]);
+        toggleNode(root);
 
         // UPDATING THE CHART WITH THE NEW DATA ON CLICK
         updateChart(null, root);
 
-
         // TOGGLE THE TOP-RIGHT INFO BOX ON CLICK OF THE NODE
-        if (root.children[0].data.title !== "") {
-            showTopRightInfoBox(null, root.children[0]);
+        if (root.data.title !== "") {
+            showTopRightInfoBox(null, root);
         }
 
         // TOGGLE THE TOP-RIGHT INFO BOX ON CLICK OF THE NODE
         else {
-            hideTopRightInfoBox(null, root.children[0]);
+            hideTopRightInfoBox(null, root);
         }
 
         // TOGGLE THE STATE OF THE BUTTON

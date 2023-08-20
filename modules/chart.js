@@ -56,6 +56,12 @@ export function createChart(rootData) {
         if (d.depth && d.data.name.length > 1) d.children = null;
     });
 
+    // For the root node, set _children instead of children
+    if (root.children) {
+        root._children = root.children;
+        root.children = null;
+    }
+
     // SELECT THE SVG CONTAINER AND APPEND THE SVG ELEMENT TO IT
     d3.select("#chart-container").node().append(svgContainer.node());
 
@@ -139,13 +145,14 @@ export function updateChart(event, source) {
 
     // ADDING THE TEXTS TO THE ENTER SELECTION
     nodeEnter.append("text")
-        .attr("dy", dt => dt._children ? "-1.0em" : "0em")
-        .attr("x", dt => dt._children ? -24 : 12)
+        .attr("dy", dt => dt._children ? "-1.50em" : "0em")
+        .attr("x", dt => (dt._children && dt.data.title.length > 20) ? 50 : 16) 
         .attr("text-anchor", dt => dt._children ? "middle" : "start")
         .text(d => d.data.title)
         .attr("stroke-linejoin", "round")
         .attr("stroke-width", 0)
         .attr("stroke", "white")
+        .attr("style", "overflow: visible;")
         .on("mouseover", showTooltip)
         .on("mouseout", hideTooltip);
 

@@ -21,6 +21,7 @@ const topRightInfoBox = d3.select("#chart-container")
 // FUNCTION TO SHOW DETAILS BOX ON MOUSEOVER A POSITION
 function showTopRightInfoBox(event, d) {
 
+    // SETTING THE CONTENT OF THE BOX
     topRightInfoBox.html(`
     ${d.data.related_leads_opportunities && d.data.related_leads_opportunities.length > 0 ? `<b style="margin-left: 20px;">ASSOCIATED LEADS/OPPORTUNITIES</b><br>
             <ul>
